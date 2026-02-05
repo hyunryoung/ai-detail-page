@@ -64,15 +64,22 @@ export default function Home() {
           </div>
           
           {/* 통계 */}
-          <div className="flex items-center justify-center gap-6 text-sm">
+          <div className="flex items-center justify-center gap-4 text-sm flex-wrap">
             <span className="bg-white/10 px-3 py-1 rounded-full">
               총 {allPrompts.length.toLocaleString()}개 프롬프트
             </span>
             <Link
               href="/generator"
-              className="bg-white text-blue-600 px-4 py-2 rounded-full font-medium hover:bg-blue-50 transition-colors"
+              className="bg-white/20 text-white px-4 py-2 rounded-full font-medium hover:bg-white/30 transition-colors"
             >
-              상세페이지 만들기 →
+              기본 버전 →
+            </Link>
+            <Link
+              href="/generator-v2"
+              className="bg-white text-blue-600 px-4 py-2 rounded-full font-medium hover:bg-blue-50 transition-colors flex items-center gap-2"
+            >
+              <span className="bg-green-500 text-white text-xs px-1.5 py-0.5 rounded">NEW</span>
+              AI 자동 분석 버전 →
             </Link>
           </div>
         </div>

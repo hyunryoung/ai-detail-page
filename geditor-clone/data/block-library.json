@@ -1,0 +1,114 @@
+{
+  "categories": [
+    {
+      "id": "basic",
+      "name": "기본",
+      "icon": "category",
+      "blocks": ["hero", "text", "image", "divider", "spacer", "button"]
+    },
+    {
+      "id": "layout",
+      "name": "레이아웃",
+      "icon": "view_column",
+      "blocks": ["columns", "gallery"]
+    },
+    {
+      "id": "media",
+      "name": "미디어",
+      "icon": "perm_media",
+      "blocks": ["video"]
+    },
+    {
+      "id": "content",
+      "name": "콘텐츠",
+      "icon": "article",
+      "blocks": ["list", "quote"]
+    },
+    {
+      "id": "other",
+      "name": "기타",
+      "icon": "more_horiz",
+      "blocks": ["social", "map"]
+    }
+  ],
+  "blocks": {
+    "hero": {
+      "name": "히어로",
+      "description": "대형 배너 이미지와 텍스트",
+      "icon": "view_carousel",
+      "premium": false
+    },
+    "text": {
+      "name": "텍스트",
+      "description": "제목, 본문, 설명 텍스트",
+      "icon": "text_fields",
+      "premium": false
+    },
+    "image": {
+      "name": "이미지",
+      "description": "단일 이미지",
+      "icon": "image",
+      "premium": false
+    },
+    "divider": {
+      "name": "구분선",
+      "description": "섹션 구분선",
+      "icon": "horizontal_rule",
+      "premium": false
+    },
+    "spacer": {
+      "name": "여백",
+      "description": "빈 공간 추가",
+      "icon": "height",
+      "premium": false
+    },
+    "button": {
+      "name": "버튼",
+      "description": "CTA 버튼",
+      "icon": "smart_button",
+      "premium": false
+    },
+    "columns": {
+      "name": "컬럼",
+      "description": "2~4열 레이아웃",
+      "icon": "view_column",
+      "premium": false
+    },
+    "gallery": {
+      "name": "갤러리",
+      "description": "이미지 갤러리",
+      "icon": "grid_view",
+      "premium": false
+    },
+    "video": {
+      "name": "비디오",
+      "description": "YouTube/Vimeo 동영상",
+      "icon": "play_circle",
+      "premium": false
+    },
+    "list": {
+      "name": "목록",
+      "description": "글머리 기호 목록",
+      "icon": "format_list_bulleted",
+      "premium": false
+    },
+    "quote": {
+      "name": "인용문",
+      "description": "인용구",
+      "icon": "format_quote",
+      "premium": false
+    },
+    "social": {
+      "name": "SNS",
+      "description": "SNS 아이콘 링크",
+      "icon": "share",
+      "premium": false
+    },
+    "map": {
+      "name": "지도",
+      "description": "Google Maps 임베드",
+      "icon": "map",
+      "premium": false
+    }
+  }
+}
