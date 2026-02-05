@@ -8,7 +8,14 @@ import { getPromptById } from "@/lib/prompts";
 import { Prompt } from "@/types/prompt";
 import ImageUploader, { UploadedImage } from "@/components/ImageUploader";
 import PromptSelector from "@/components/PromptSelector";
-import DetailPageTemplate from "@/components/DetailPageTemplate";
+import {
+  HeaderSection,
+  MainImageSection,
+  FeaturesSection,
+  RecommendationsSection,
+  FooterSection,
+  parseCopyText
+} from "@/components/DetailPageSections";
 import { renderToImage, downloadImage } from "@/lib/renderToImage";
 import ApiKeySettings, { getStoredApiKey } from "@/components/ApiKeySettings";
 
@@ -25,9 +32,15 @@ function GeneratorContent() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<string>("");
-  const [showTemplate, setShowTemplate] = useState(false);
+  const [showSections, setShowSections] = useState(false);
   const [apiKey, setApiKey] = useState<string | null>(null);
-  const templateRef = useRef<HTMLDivElement>(null);
+  
+  // 섹션별 ref
+  const headerRef = useRef<HTMLDivElement>(null);
+  const mainImageRef = useRef<HTMLDivElement>(null);
+  const featuresRef = useRef<HTMLDivElement>(null);
+  const recommendationsRef = useRef<HTMLDivElement>(null);
+  const footerRef = useRef<HTMLDivElement>(null);
 
   // 컴포넌트 마운트 시 저장된 API 키 로드
   useEffect(() => {
@@ -114,24 +127,64 @@ function GeneratorContent() {
     setError(null);
   };
 
-  const handleDownload = async () => {
-    if (!templateRef.current || !generatedCopy) return;
-    
-    setShowTemplate(true);
-    
-    // DOM 렌더링 대기
-    await new Promise(resolve => setTimeout(resolve, 500));
+  // 개별 섹션 다운로드
+  const downloadSection = async (
+    ref: React.RefObject<HTMLDivElement>,
+    sectionName: string
+  ) => {
+    setShowSections(true);
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     try {
-      const dataUrl = await renderToImage(templateRef.current);
-      const filename = `${productName.replace(/\s+/g, "_")}_상세페이지.jpg`;
+      if (!ref.current) {
+        throw new Error(`${sectionName} 섹션을 찾을 수 없습니다.`);
+      }
+      
+      const dataUrl = await renderToImage(ref.current);
+      const filename = `${productName.replace(/\s+/g, "_")}_${sectionName}.jpg`;
       downloadImage(dataUrl, filename);
     } catch (err) {
-      console.error("렌더링 오류:", err);
-      alert("이미지 생성 중 오류가 발생했습니다.");
+      console.error(`${sectionName} 렌더링 오류:`, err);
+      alert(`${sectionName} 이미지 생성 중 오류가 발생했습니다.`);
     } finally {
-      setShowTemplate(false);
+      setShowSections(false);
     }
+  };
+
+  // 전체 섹션 다운로드
+  const downloadAllSections = async () => {
+    if (!generatedCopy) return;
+    
+    const parsed = parseCopyText(generatedCopy);
+    const sections = [
+      { ref: headerRef, name: "01_헤더" },
+      { ref: mainImageRef, name: "02_메인이미지" },
+    ];
+    
+    if (parsed.features.length > 0) {
+      sections.push({ ref: featuresRef, name: "03_제품특징" });
+    }
+    if (parsed.recommendations.length > 0) {
+      sections.push({ ref: recommendationsRef, name: "04_추천대상" });
+    }
+    sections.push({ ref: footerRef, name: "05_배송안내" });
+
+    setShowSections(true);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    for (const section of sections) {
+      try {
+        if (!section.ref.current) continue;
+        const dataUrl = await renderToImage(section.ref.current);
+        const filename = `${productName.replace(/\s+/g, "_")}_${section.name}.jpg`;
+        downloadImage(dataUrl, filename);
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (err) {
+        console.error(`${section.name} 다운로드 오류:`, err);
+      }
+    }
+    
+    setShowSections(false);
   };
 
   return (
@@ -297,16 +350,61 @@ function GeneratorContent() {
             </div>
 
             {generatedCopy && !isGenerating && (
-              <div className="flex gap-3">
+              <div className="space-y-3">
                 <button 
-                  onClick={handleDownload}
-                  className="flex-1 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700"
+                  onClick={downloadAllSections}
+                  className="w-full py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 flex items-center justify-center gap-2"
                 >
-                  JPG로 다운로드
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  전체 다운로드 (5개 이미지)
                 </button>
+                
+                <div className="text-sm text-gray-500 dark:text-gray-400 text-center">
+                  또는 섹션별로 다운로드
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  <button 
+                    onClick={() => downloadSection(headerRef, "01_헤더")}
+                    className="py-2 px-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded text-sm hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                  >
+                    헤더
+                  </button>
+                  <button 
+                    onClick={() => downloadSection(mainImageRef, "02_메인이미지")}
+                    className="py-2 px-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded text-sm hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                  >
+                    메인 이미지
+                  </button>
+                  {parseCopyText(generatedCopy).features.length > 0 && (
+                    <button 
+                      onClick={() => downloadSection(featuresRef, "03_제품특징")}
+                      className="py-2 px-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded text-sm hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                    >
+                      제품 특징
+                    </button>
+                  )}
+                  {parseCopyText(generatedCopy).recommendations.length > 0 && (
+                    <button 
+                      onClick={() => downloadSection(recommendationsRef, "04_추천대상")}
+                      className="py-2 px-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded text-sm hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                    >
+                      추천 대상
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => downloadSection(footerRef, "05_배송안내")}
+                    className="py-2 px-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded text-sm hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                  >
+                    배송 안내
+                  </button>
+                </div>
+
                 <button 
                   onClick={handleReset}
-                  className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600"
+                  className="w-full py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600"
                 >
                   다시 생성
                 </button>
@@ -316,18 +414,60 @@ function GeneratorContent() {
         </div>
       </div>
 
-      {/* 숨겨진 템플릿 (JPG 렌더링용) */}
-      {showTemplate && generatedCopy && (
-        <div className="fixed left-[-9999px] top-0">
-          <DetailPageTemplate
-            ref={templateRef}
-            productName={productName}
-            productImage={images.length > 0 ? images[0].preview : null}
-            generatedImage={generatedImage}
-            copyText={generatedCopy}
-          />
-        </div>
-      )}
+      {/* 렌더링용 섹션들 (다운로드 중 표시) */}
+      {showSections && generatedCopy && (() => {
+        const parsed = parseCopyText(generatedCopy);
+        return (
+          <div style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 50,
+            backgroundColor: "rgba(0, 0, 0, 0.8)",
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "center",
+            overflow: "auto",
+            padding: "32px 0"
+          }}>
+            <div style={{ position: "relative" }}>
+              <div style={{
+                position: "absolute",
+                top: "8px",
+                right: "8px",
+                zIndex: 10,
+                backgroundColor: "#2563eb",
+                color: "#ffffff",
+                padding: "4px 12px",
+                borderRadius: "9999px",
+                fontSize: "14px"
+              }}>
+                이미지 생성 중...
+              </div>
+              
+              <HeaderSection ref={headerRef} headline={parsed.headline || productName} subheadline={parsed.subheadline} />
+              <div style={{ height: "16px" }} />
+              <MainImageSection ref={mainImageRef} productName={productName} imageUrl={generatedImage || (images.length > 0 ? images[0].preview : null)} />
+              <div style={{ height: "16px" }} />
+              {parsed.features.length > 0 && (
+                <>
+                  <FeaturesSection ref={featuresRef} features={parsed.features} />
+                  <div style={{ height: "16px" }} />
+                </>
+              )}
+              {parsed.recommendations.length > 0 && (
+                <>
+                  <RecommendationsSection ref={recommendationsRef} recommendations={parsed.recommendations} />
+                  <div style={{ height: "16px" }} />
+                </>
+              )}
+              <FooterSection ref={footerRef} />
+            </div>
+          </div>
+        );
+      })()}
     </main>
   );
 }

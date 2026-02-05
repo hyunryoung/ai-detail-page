@@ -1,7 +1,6 @@
 "use client";
 
 import { forwardRef } from "react";
-import Image from "next/image";
 
 interface DetailPageTemplateProps {
   productName: string;
@@ -11,6 +10,7 @@ interface DetailPageTemplateProps {
 }
 
 // 상세페이지 템플릿 컴포넌트 (렌더링용)
+// html2canvas 호환성을 위해 인라인 스타일 사용 (Tailwind의 lab() 색상 미지원)
 const DetailPageTemplate = forwardRef<HTMLDivElement, DetailPageTemplateProps>(
   ({ productName, productImage, generatedImage, copyText }, ref) => {
     // 카피 텍스트 파싱
@@ -41,36 +41,83 @@ const DetailPageTemplate = forwardRef<HTMLDivElement, DetailPageTemplateProps>(
     const headline = lines[0]?.replace(/^[#\d.]+\s*/, "").replace(/^\*+|\*+$/g, "").trim() || productName;
     const subheadline = lines[1]?.replace(/^[#\d.]+\s*/, "").replace(/^\*+|\*+$/g, "").trim() || "";
 
+    // 색상 정의 (html2canvas 호환 - hex/rgb만 사용)
+    const colors = {
+      white: "#ffffff",
+      black: "#000000",
+      gray50: "#f9fafb",
+      gray100: "#f3f4f6",
+      gray200: "#e5e7eb",
+      gray300: "#d1d5db",
+      gray400: "#9ca3af",
+      gray500: "#6b7280",
+      gray700: "#374151",
+      gray800: "#1f2937",
+      gray900: "#111827",
+      blue600: "#2563eb",
+      purple600: "#9333ea",
+    };
+
     return (
       <div 
         ref={ref}
-        className="w-[800px] bg-white text-gray-900"
-        style={{ fontFamily: "'Noto Sans KR', sans-serif" }}
+        data-template="true"
+        style={{ 
+          width: "800px", 
+          backgroundColor: colors.white, 
+          color: colors.gray900,
+          fontFamily: "'Noto Sans KR', sans-serif"
+        }}
       >
         {/* 헤더 영역 */}
-        <div className="bg-gradient-to-br from-blue-600 to-purple-600 text-white p-12 text-center">
-          <h1 className="text-4xl font-bold mb-4">{headline}</h1>
+        <div style={{
+          background: `linear-gradient(to bottom right, ${colors.blue600}, ${colors.purple600})`,
+          color: colors.white,
+          padding: "48px",
+          textAlign: "center"
+        }}>
+          <h1 style={{ fontSize: "36px", fontWeight: "bold", marginBottom: "16px" }}>
+            {headline}
+          </h1>
           {subheadline && (
-            <p className="text-xl opacity-90">{subheadline}</p>
+            <p style={{ fontSize: "20px", opacity: 0.9 }}>{subheadline}</p>
           )}
         </div>
 
         {/* 메인 이미지 */}
-        <div className="relative aspect-square bg-gray-100">
-          {generatedImage ? (
+        <div style={{
+          position: "relative",
+          width: "100%",
+          paddingBottom: "100%", // 1:1 비율
+          backgroundColor: colors.gray100,
+          overflow: "hidden"
+        }}>
+          {(generatedImage || productImage) && (
             <img
-              src={generatedImage}
+              src={generatedImage || productImage || ""}
               alt={productName}
-              className="w-full h-full object-cover"
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "cover"
+              }}
             />
-          ) : productImage ? (
-            <img
-              src={productImage}
-              alt={productName}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-400">
+          )}
+          {!generatedImage && !productImage && (
+            <div style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: colors.gray400
+            }}>
               이미지 없음
             </div>
           )}
@@ -78,17 +125,44 @@ const DetailPageTemplate = forwardRef<HTMLDivElement, DetailPageTemplateProps>(
 
         {/* 제품 특징 */}
         {features.length > 0 && (
-          <div className="p-12 bg-gray-50">
-            <h2 className="text-2xl font-bold text-center mb-8 text-gray-800">
+          <div style={{ padding: "48px", backgroundColor: colors.gray50 }}>
+            <h2 style={{ 
+              fontSize: "24px", 
+              fontWeight: "bold", 
+              textAlign: "center", 
+              marginBottom: "32px",
+              color: colors.gray800
+            }}>
               주요 특징
             </h2>
-            <div className="space-y-4">
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {features.map((feature, idx) => (
-                <div key={idx} className="flex items-start gap-4 bg-white p-4 rounded-lg shadow-sm">
-                  <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center flex-shrink-0 font-bold">
+                <div key={idx} style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "16px",
+                  backgroundColor: colors.white,
+                  padding: "16px",
+                  borderRadius: "8px",
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
+                }}>
+                  <div style={{
+                    width: "32px",
+                    height: "32px",
+                    backgroundColor: colors.blue600,
+                    color: colors.white,
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    fontWeight: "bold"
+                  }}>
                     {idx + 1}
                   </div>
-                  <p className="text-lg text-gray-700 pt-1">{feature}</p>
+                  <p style={{ fontSize: "18px", color: colors.gray700, paddingTop: "4px" }}>
+                    {feature}
+                  </p>
                 </div>
               ))}
             </div>
@@ -97,15 +171,28 @@ const DetailPageTemplate = forwardRef<HTMLDivElement, DetailPageTemplateProps>(
 
         {/* 추천 대상 */}
         {recommendations.length > 0 && (
-          <div className="p-12">
-            <h2 className="text-2xl font-bold text-center mb-8 text-gray-800">
+          <div style={{ padding: "48px" }}>
+            <h2 style={{ 
+              fontSize: "24px", 
+              fontWeight: "bold", 
+              textAlign: "center", 
+              marginBottom: "32px",
+              color: colors.gray800
+            }}>
               이런 분께 추천해요
             </h2>
-            <div className="grid grid-cols-1 gap-4">
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {recommendations.map((rec, idx) => (
-                <div key={idx} className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg">
-                  <span className="text-2xl">✨</span>
-                  <p className="text-lg text-gray-700">{rec}</p>
+                <div key={idx} style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "16px",
+                  padding: "16px",
+                  border: `1px solid ${colors.gray200}`,
+                  borderRadius: "8px"
+                }}>
+                  <span style={{ fontSize: "24px" }}>✨</span>
+                  <p style={{ fontSize: "18px", color: colors.gray700 }}>{rec}</p>
                 </div>
               ))}
             </div>
@@ -113,16 +200,29 @@ const DetailPageTemplate = forwardRef<HTMLDivElement, DetailPageTemplateProps>(
         )}
 
         {/* 배송 안내 */}
-        <div className="p-12 bg-gray-800 text-white text-center">
-          <h2 className="text-xl font-bold mb-4">배송 안내</h2>
-          <div className="space-y-2 text-gray-300">
-            <p>주문 후 1-3일 내 출고</p>
+        <div style={{
+          padding: "48px",
+          backgroundColor: colors.gray800,
+          color: colors.white,
+          textAlign: "center"
+        }}>
+          <h2 style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "16px" }}>
+            배송 안내
+          </h2>
+          <div style={{ color: colors.gray300 }}>
+            <p style={{ marginBottom: "8px" }}>주문 후 1-3일 내 출고</p>
             <p>안전한 포장으로 배송해드립니다</p>
           </div>
         </div>
 
         {/* 푸터 */}
-        <div className="p-6 bg-gray-900 text-center text-gray-500 text-sm">
+        <div style={{
+          padding: "24px",
+          backgroundColor: colors.gray900,
+          textAlign: "center",
+          color: colors.gray500,
+          fontSize: "14px"
+        }}>
           <p>AI 상세페이지 자동화 시스템으로 제작됨</p>
         </div>
       </div>

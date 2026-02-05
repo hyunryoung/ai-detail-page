@@ -118,9 +118,9 @@ export default function PromptSelector({ selectedPrompt, onSelect }: PromptSelec
                 {CATEGORIES.map((cat) => (
                   <button
                     key={cat.id}
-                    onClick={() => setCategory(cat.name_en)}
+                    onClick={() => setCategory(cat.id)}
                     className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${
-                      category === cat.name_en
+                      category === cat.id
                         ? "bg-blue-600 text-white"
                         : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
                     }`}
