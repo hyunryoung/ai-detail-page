@@ -7,11 +7,19 @@ interface Props {
   steps: Array<{ title: string; description: string }>;
   category: string;
   productImage?: string | null;
+  stepImages?: string[];
 }
 
 export const HowToUseSection = forwardRef<HTMLDivElement, Props>(
-  ({ headline, steps, category, productImage }, ref) => {
+  ({ headline, steps, category, productImage, stepImages = [] }, ref) => {
     const theme = getTheme(category);
+
+    // 각 스텝의 이미지 결정: stepImages > productImage > 플레이스홀더
+    const getStepImage = (i: number): string | null => {
+      if (stepImages[i]) return stepImages[i];
+      if (i === 0 && productImage) return productImage;
+      return null;
+    };
 
     return (
       <div ref={ref} data-section="howToUse" style={{ ...commonStyles.sectionBase, background: theme.bgDark, color: "#FFFFFF" }}>
@@ -29,36 +37,65 @@ export const HowToUseSection = forwardRef<HTMLDivElement, Props>(
         <div style={{ padding: "0 0 60px" }}>
           {steps.map((step, i) => {
             const isEven = i % 2 === 0;
+            const imgSrc = getStepImage(i);
+
             return (
               <div key={i} style={{
                 display: "flex",
                 flexDirection: isEven ? "row" : "row-reverse",
-                minHeight: "200px",
+                minHeight: "220px",
               }}>
                 {/* 이미지 영역 */}
                 <div style={{
                   width: "50%",
-                  background: i === 0 && productImage
-                    ? `url(${productImage}) center/cover`
-                    : `linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.1))`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  minHeight: "200px",
+                  position: "relative",
+                  overflow: "hidden",
+                  minHeight: "220px",
                 }}>
-                  {!(i === 0 && productImage) && (
+                  {imgSrc ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={imgSrc}
+                        alt={`Step ${i + 1}`}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                        }}
+                      />
+                      {/* 살짝 어두운 오버레이 */}
+                      <div style={{
+                        position: "absolute",
+                        inset: 0,
+                        background: "rgba(0,0,0,0.1)",
+                      }} />
+                    </>
+                  ) : (
                     <div style={{
-                      width: "80px",
-                      height: "80px",
-                      borderRadius: "50%",
-                      background: "rgba(255,255,255,0.1)",
+                      width: "100%",
+                      height: "100%",
+                      background: `linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.1))`,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                     }}>
-                      <span style={{ fontSize: "32px", opacity: 0.5 }}>
-                        {i === 0 ? "💊" : i === 1 ? "💧" : "📦"}
-                      </span>
+                      <div style={{
+                        width: "80px",
+                        height: "80px",
+                        borderRadius: "50%",
+                        background: "rgba(255,255,255,0.1)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}>
+                        <span style={{ fontSize: "32px", opacity: 0.5 }}>
+                          {i === 0 ? "💊" : i === 1 ? "💧" : "📦"}
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>

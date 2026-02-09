@@ -39,30 +39,26 @@ export async function POST(request: NextRequest) {
     // 프롬프트 구성
     let contents: any[] = [];
 
-    // 이미지가 있으면 함께 전송 (배경만 교체, 제품 유지 모드)
+    // 이미지가 있으면 함께 전송 (제품을 장면에 자연스럽게 배치)
     if (imageFile) {
       const bytes = await imageFile.arrayBuffer();
       const base64 = Buffer.from(bytes).toString("base64");
       
-      // 제품 유지 + 배경 교체 프롬프트 (매우 강조)
-      const editPrompt = `IMPORTANT: You MUST keep the EXACT product from the image. DO NOT change, modify, or recreate the product itself.
-
-Your task: ONLY replace the background while keeping the product EXACTLY as it appears.
+      // 제품 배치 프롬프트
+      const editPrompt = `You are given a product image (possibly with transparent background). Your task is to create a beautiful commercial product photography scene.
 
 Instructions:
-1. PRESERVE the product exactly - same shape, color, design, label, text, everything
-2. REMOVE the current background (usually white/plain)
-3. REPLACE with new background: ${prompt}
-4. The product should look naturally placed in the new background
-5. Add appropriate shadows and lighting that match the new background
-6. Keep the product in sharp focus
-7. DO NOT add any text, logos, watermarks, or captions to the image
-8. The output should be a clean product photo with NO text overlays
+1. Keep the EXACT product from the image - preserve all labels, text, colors, shape
+2. Place the product naturally in this scene: ${prompt}
+3. Add realistic shadows, reflections, and lighting that match the scene
+4. The product should look like it was photographed in this setting
+5. Make it look like a professional commercial product photo
+6. DO NOT add any text, watermarks, or captions
+7. The product must be the main focus of the image
 
-Style for new background: ${prompt}
-Professional commercial photography, high quality, 860px width.
-
-CRITICAL: The product must be 100% identical to the original. Only the background changes. NO TEXT in the generated image.`;
+Scene: ${prompt}
+Quality: Professional commercial photography, high quality, 860px width.
+CRITICAL: Keep the product identical to the original. NO TEXT in the output.`;
 
       contents = [
         { text: editPrompt },

@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { toPng } from "html-to-image";
 import JSZip from "jszip";
+import { removeBackground } from "@imgly/background-removal";
 import type { ProductAnalysis, SectionContents, SectionMeta } from "@/types/sections";
 import { DEFAULT_SECTIONS } from "@/types/sections";
 import {
@@ -18,11 +19,17 @@ export default function GeneratorV3Page() {
   const [step, setStep] = useState<Step>("upload");
   const [apiKey, setApiKey] = useState("");
   const [uploadedImage, setUploadedImage] = useState<{ file: File; preview: string } | null>(null);
+  const [cutoutImage, setCutoutImage] = useState<string | null>(null);
+  const [cutoutFile, setCutoutFile] = useState<File | null>(null);
+  const [isRemovingBg, setIsRemovingBg] = useState(false);
+  const [sellingPoints, setSellingPoints] = useState("");
+  const [productName, setProductName] = useState("");
   const [analysis, setAnalysis] = useState<ProductAnalysis | null>(null);
   const [sectionContents, setSectionContents] = useState<SectionContents | null>(null);
   const [sections, setSections] = useState<SectionMeta[]>(DEFAULT_SECTIONS);
   const [heroImage, setHeroImage] = useState<string | null>(null);
   const [brandStoryImage, setBrandStoryImage] = useState<string | null>(null);
+  const [howToUseImages, setHowToUseImages] = useState<string[]>([]);
   const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
   const [isDownloading, setIsDownloading] = useState(false);
@@ -42,15 +49,39 @@ export default function GeneratorV3Page() {
     localStorage.setItem("gemini_api_key", key);
   };
 
-  // 이미지 업로드
-  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  // 이미지 업로드 + 자동 누끼
+  const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // 원본 미리보기
     const reader = new FileReader();
     reader.onload = () => {
       setUploadedImage({ file, preview: reader.result as string });
     };
     reader.readAsDataURL(file);
+
+    // 자동 배경 제거 (누끼)
+    setIsRemovingBg(true);
+    setCutoutImage(null);
+    try {
+      const blob = await removeBackground(file, {
+        output: { format: "image/png" },
+      });
+      // blob → File 객체 (AI 전송용)
+      const cutoutFileObj = new File([blob], "cutout.png", { type: "image/png" });
+      setCutoutFile(cutoutFileObj);
+      // blob → base64 (미리보기 + html-to-image 호환)
+      const cutoutReader = new FileReader();
+      cutoutReader.onload = () => {
+        setCutoutImage(cutoutReader.result as string);
+      };
+      cutoutReader.readAsDataURL(blob);
+    } catch (err) {
+      console.error("배경 제거 실패:", err);
+      // 실패 시 원본 이미지 사용
+    }
+    setIsRemovingBg(false);
   }, []);
 
   // === 메인 생성 파이프라인 ===
@@ -75,6 +106,18 @@ export default function GeneratorV3Page() {
 
       if (!analyzeData.success) throw new Error(analyzeData.error);
       const productAnalysis: ProductAnalysis = analyzeData.analysis;
+
+      // 사용자 입력으로 분석 결과 보완
+      if (productName.trim()) {
+        productAnalysis.productName = productName.trim();
+      }
+      if (sellingPoints.trim()) {
+        const points = sellingPoints.split("\n").filter(p => p.trim());
+        if (points.length > 0) {
+          productAnalysis.keyFeatures = points;
+        }
+      }
+
       setAnalysis(productAnalysis);
 
       // Step 2: 섹션별 텍스트 생성
@@ -89,16 +132,38 @@ export default function GeneratorV3Page() {
       if (!sectionsData.success) throw new Error(sectionsData.error);
       setSectionContents(sectionsData.sections);
 
-      // Step 3: AI 이미지 생성 (히어로, 브랜드 스토리 - 2장만)
-      setProgress("AI 이미지 생성 중 (1/2)...");
-      const heroPrompt = `Traditional ${productAnalysis.category === "food" ? "Korean" : "premium"} product photography setting. ${productAnalysis.suggestedPromptStyle}. Warm natural lighting, elegant atmosphere.`;
-      const heroImg = await generateImage(productAnalysis.productName, heroPrompt, uploadedImage.file, apiKey);
+      // Step 3: AI 이미지 생성
+      const totalImages = 5;
+      let imgCount = 0;
+
+      // 3-1. 히어로 이미지 (누끼 제품 + 배경 합성)
+      imgCount++;
+      setProgress(`AI 이미지 생성 중 (${imgCount}/${totalImages})... 히어로 컨셉샷`);
+      const heroPrompt = productAnalysis.category === "food"
+        ? `Place this product naturally on a beautiful traditional Korean wooden table. Warm natural lighting, ceramic bowls and dried herbs around. Premium food product photography, magazine quality.`
+        : `Place this product in a premium elegant setting. Soft studio lighting, bokeh effects, luxurious surface. Professional commercial photography, magazine quality.`;
+      // 누끼 이미지가 있으면 누끼로, 없으면 원본으로 전송
+      const heroInputFile = cutoutFile || uploadedImage.file;
+      const heroImg = await generateImage(productAnalysis.productName, heroPrompt + " No text, no watermarks. 860px width.", heroInputFile, apiKey);
       if (heroImg) setHeroImage(heroImg);
 
-      setProgress("AI 이미지 생성 중 (2/2)...");
-      const brandPrompt = `${productAnalysis.category === "food" ? "Traditional Korean artisan crafting herbal medicine in a warm traditional Korean room" : "Premium brand story scene, professional craftsmanship"}. Cinematic lighting, detailed, professional photography. No text.`;
+      // 3-2. 브랜드 스토리 장면 (제품 없이 분위기 장면)
+      imgCount++;
+      setProgress(`AI 이미지 생성 중 (${imgCount}/${totalImages})... 브랜드 스토리`);
+      const brandPrompt = `${productAnalysis.category === "food" ? "Traditional Korean artisan in hanbok carefully preparing herbal medicine in a warm traditional Korean room with wooden shelves and ceramic jars" : "Premium brand craftsmanship scene, artisan at work in a beautiful workshop"}. Cinematic lighting, highly detailed, professional photography. No text, no logos.`;
       const brandImg = await generateImage(productAnalysis.productName, brandPrompt, null, apiKey);
       if (brandImg) setBrandStoryImage(brandImg);
+
+      // 3-3~5. 사용법 스텝별 이미지 (제품 없이 장면만)
+      const howToImgs: string[] = [];
+      const stepPrompts = getHowToUseImagePrompts(productAnalysis);
+      for (let i = 0; i < stepPrompts.length; i++) {
+        imgCount++;
+        setProgress(`AI 이미지 생성 중 (${imgCount}/${totalImages})... 사용법 Step ${i + 1}`);
+        const img = await generateImage(productAnalysis.productName, stepPrompts[i], null, apiKey);
+        howToImgs.push(img || "");
+      }
+      setHowToUseImages(howToImgs);
 
       setProgress("");
       setStep("preview");
@@ -106,6 +171,28 @@ export default function GeneratorV3Page() {
       setError(err.message || "생성 중 오류가 발생했습니다.");
       setStep("upload");
     }
+  };
+
+  // 사용법 이미지 프롬프트 생성
+  const getHowToUseImagePrompts = (a: ProductAnalysis): string[] => {
+    if (a.usageType === "oral") {
+      return [
+        `Close-up photo of a woman's hand holding small herbal pills/supplements on her palm, clean bright background, soft natural lighting. Professional health product photography. No text.`,
+        `A glass of clean water with small herbal pills beside it on a minimal white table, morning sunlight, healthy lifestyle. Professional photography. No text.`,
+        `A sealed glass jar of herbal supplements stored neatly on a clean shelf in a cool dry place, organized storage. Professional photography. No text.`,
+      ];
+    } else if (a.usageType === "topical") {
+      return [
+        `Close-up of a woman's hand applying a small amount of skincare cream/serum from a jar, clean bathroom background. Professional beauty photography. No text.`,
+        `Woman gently applying skincare product on her face/skin with soft upward strokes, soft lighting. Professional beauty photography. No text.`,
+        `Woman patting her face gently to help absorb skincare product, dewy glowing skin, soft lighting. Professional beauty photography. No text.`,
+      ];
+    }
+    return [
+      `Professional product usage step 1 scene, clean and minimal, soft lighting. No text.`,
+      `Professional product usage step 2 scene, clean and minimal, soft lighting. No text.`,
+      `Professional product usage step 3 scene, clean and minimal, soft lighting. No text.`,
+    ];
   };
 
   // 이미지 생성 헬퍼
@@ -245,7 +332,7 @@ export default function GeneratorV3Page() {
                   {isDownloading ? "다운로드 중..." : "ZIP 다운로드"}
                 </button>
                 <button
-                  onClick={() => { setStep("upload"); setAnalysis(null); setSectionContents(null); setHeroImage(null); setBrandStoryImage(null); }}
+                  onClick={() => { setStep("upload"); setAnalysis(null); setSectionContents(null); setHeroImage(null); setBrandStoryImage(null); setHowToUseImages([]); }}
                   className="px-4 py-2 text-gray-600 text-sm rounded-lg border hover:bg-gray-50"
                 >
                   새로 만들기
@@ -276,6 +363,34 @@ export default function GeneratorV3Page() {
             />
           </div>
 
+          {/* 제품명 (선택) */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              제품명 <span className="text-gray-400 font-normal">(선택 - AI가 자동 인식하지만 직접 입력하면 더 정확)</span>
+            </label>
+            <input
+              type="text"
+              value={productName}
+              onChange={(e) => setProductName(e.target.value)}
+              placeholder="예: 자연애본 발효어성초환"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+            />
+          </div>
+
+          {/* 셀링포인트 (선택) */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              셀링포인트 <span className="text-gray-400 font-normal">(선택 - 줄바꿈으로 구분, AI 카피 품질이 올라갑니다)</span>
+            </label>
+            <textarea
+              value={sellingPoints}
+              onChange={(e) => setSellingPoints(e.target.value)}
+              placeholder={"국내산 어성초 49% 고함량\nHACCP 인증 시설에서 제조\n무형문화재 명장의 발효 숙성 기술\n72시간 전통 발효 공법"}
+              rows={4}
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm resize-none"
+            />
+          </div>
+
           {/* 이미지 업로드 */}
           <div className="mb-8">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">제품 이미지</label>
@@ -284,8 +399,31 @@ export default function GeneratorV3Page() {
               <label htmlFor="image-upload" className="cursor-pointer">
                 {uploadedImage ? (
                   <div className="space-y-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={uploadedImage.preview} alt="제품" className="max-h-48 mx-auto rounded-lg shadow" />
+                    <div className="flex items-center justify-center gap-4">
+                      {/* 원본 */}
+                      <div className="text-center">
+                        <p className="text-xs text-gray-400 mb-1">원본</p>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={uploadedImage.preview} alt="원본" className="max-h-36 rounded-lg shadow" />
+                      </div>
+                      {/* 누끼 */}
+                      <div className="text-center">
+                        <p className="text-xs text-gray-400 mb-1">누끼</p>
+                        {isRemovingBg ? (
+                          <div className="w-36 h-36 bg-gray-100 dark:bg-gray-700 rounded-lg flex flex-col items-center justify-center">
+                            <div className="w-6 h-6 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-2" />
+                            <span className="text-xs text-gray-400">배경 제거 중...</span>
+                          </div>
+                        ) : cutoutImage ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={cutoutImage} alt="누끼" className="max-h-36 rounded-lg" style={{ background: "repeating-conic-gradient(#ddd 0% 25%, transparent 0% 50%) 50% / 16px 16px" }} />
+                        ) : (
+                          <div className="w-36 h-36 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                            <span className="text-xs text-gray-400">대기 중</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                     <p className="text-sm text-gray-500">클릭하여 변경</p>
                   </div>
                 ) : (
@@ -366,7 +504,7 @@ export default function GeneratorV3Page() {
                 .sort((a, b) => a.order - b.order)
                 .map((section) => (
                   <div key={section.id} ref={(el) => { sectionRefs.current[section.id] = el; }}>
-                    {renderSection(section.id, sectionContents, analysis, uploadedImage?.preview || null, heroImage, brandStoryImage)}
+                    {renderSection(section.id, sectionContents, analysis, cutoutImage || uploadedImage?.preview || null, heroImage, brandStoryImage, howToUseImages)}
                   </div>
                 ))}
             </div>
@@ -393,6 +531,7 @@ function renderSection(
   productImage: string | null,
   heroImage: string | null,
   brandStoryImage: string | null,
+  howToUseImages: string[],
 ) {
   const category = analysis.category;
 
@@ -429,7 +568,7 @@ function renderSection(
     case "purchaseOptions":
       return <PurchaseSection {...contents.purchaseOptions} category={category} productImage={productImage} />;
     case "howToUse":
-      return <HowToUseSection {...contents.howToUse} category={category} productImage={productImage} />;
+      return <HowToUseSection {...contents.howToUse} category={category} productImage={productImage} stepImages={howToUseImages} />;
     case "reviews":
       return <ReviewsSection {...contents.reviews} category={category} productImage={productImage} />;
     case "faq":

@@ -17,8 +17,8 @@ export const TargetSection = forwardRef<HTMLDivElement, Props>(
     return (
       <div ref={ref} data-section="target" style={{ ...commonStyles.sectionBase, background: theme.primaryLight }}>
         {/* 텍스트 영역 */}
-        <div style={{ padding: "60px 60px 40px", textAlign: "center" }}>
-          <p style={{ fontSize: "17px", color: theme.textLight, marginBottom: "16px" }}>
+        <div style={{ padding: "60px 60px 32px", textAlign: "center" }}>
+          <p style={{ fontSize: "16px", color: theme.textLight, marginBottom: "16px" }}>
             {subtitle}
           </p>
           <h2 style={{ ...commonStyles.h1, color: theme.text, whiteSpace: "pre-line", marginBottom: "0" }}>
@@ -26,45 +26,49 @@ export const TargetSection = forwardRef<HTMLDivElement, Props>(
           </h2>
         </div>
 
-        {/* 이미지 영역 */}
-        <div style={{ padding: "0 40px", display: "flex", justifyContent: "center", gap: "16px" }}>
-          {/* 좌측 분위기 이미지 */}
-          <div style={{
-            width: "240px",
-            height: "240px",
-            borderRadius: "50%",
-            overflow: "hidden",
-            background: `linear-gradient(135deg, ${theme.primaryDark}, ${theme.primary})`,
-            opacity: 0.9,
-          }} />
-          {/* 중앙 제품 이미지 */}
-          <div style={{
-            width: "240px",
-            height: "280px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}>
-            {productImage ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={productImage} alt="product" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
-            ) : (
-              <div style={{ width: "180px", height: "240px", background: theme.border, borderRadius: "12px" }} />
-            )}
-          </div>
-          {/* 우측 분위기 이미지 */}
-          <div style={{
-            width: "240px",
-            height: "240px",
-            borderRadius: "50%",
-            overflow: "hidden",
-            background: `linear-gradient(135deg, ${theme.accent}, ${theme.primary})`,
-            opacity: 0.9,
-          }} />
+        {/* 제품 이미지 - 중앙 크게 */}
+        <div style={{ padding: "20px 80px 24px", display: "flex", justifyContent: "center" }}>
+          {productImage ? (
+            <div style={{
+              position: "relative",
+              width: "320px",
+              height: "360px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}>
+              {/* 배경 장식 원 */}
+              <div style={{
+                position: "absolute",
+                width: "280px",
+                height: "280px",
+                borderRadius: "50%",
+                background: `linear-gradient(135deg, ${theme.primary}15, ${theme.primary}30)`,
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+              }} />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={productImage}
+                alt="product"
+                style={{
+                  position: "relative",
+                  zIndex: 1,
+                  maxWidth: "260px",
+                  maxHeight: "340px",
+                  objectFit: "contain",
+                  filter: "drop-shadow(0 20px 40px rgba(0,0,0,0.12))",
+                }}
+              />
+            </div>
+          ) : (
+            <div style={{ width: "200px", height: "260px", background: theme.border, borderRadius: "12px" }} />
+          )}
         </div>
 
         {/* 설명 */}
-        <div style={{ padding: "40px 80px 60px", textAlign: "center" }}>
+        <div style={{ padding: "16px 80px 60px", textAlign: "center" }}>
           <p style={{ ...commonStyles.body, color: theme.textLight, lineHeight: "1.8" }}>
             {description}
           </p>

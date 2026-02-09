@@ -37,7 +37,7 @@ export const HeroSection = forwardRef<HTMLDivElement, Props>(
           </p>
         </div>
 
-        {/* 하단: 제품 이미지 영역 */}
+        {/* 하단: AI 합성 이미지 or 제품 이미지 영역 */}
         <div style={{
           position: "relative",
           height: "480px",
@@ -46,8 +46,8 @@ export const HeroSection = forwardRef<HTMLDivElement, Props>(
             ? `url(${backgroundImage}) center/cover no-repeat`
             : `linear-gradient(135deg, ${theme.bgAlt}, ${theme.primaryLight})`,
         }}>
-          {/* 제품 이미지 */}
-          {productImage && (
+          {/* AI 합성 이미지가 없을 때만 제품 이미지 오버레이 */}
+          {!backgroundImage && productImage && (
             <div style={{
               position: "absolute",
               bottom: "0",
