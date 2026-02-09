@@ -69,6 +69,8 @@ export interface CategoryPrompt {
   productShotTemplate: string;
   howToUseTemplate: string;
   ctaTemplate: string;
+  ingredientsTemplate: string;
+  brandTemplate: string;
 }
 
 export const categoryPrompts: Record<string, CategoryPrompt> = {
@@ -76,101 +78,132 @@ export const categoryPrompts: Record<string, CategoryPrompt> = {
     styleKeywords: ["luxury", "elegant", "premium", "soft lighting"],
     backgroundColors: ["cream", "ivory", "champagne", "soft gold"],
     mood: ["sophisticated", "clean", "serene"],
-    heroTemplate: `Luxury skincare product hero image. Elegant {background} background with soft golden light. 
-{productName} displayed prominently. Premium cosmetic photography style, high-end beauty brand aesthetic.
-Product color: {mainColor}. 800px width, vertical layout for detail page.`,
-    benefitsTemplate: `Skincare benefits infographic. {background} gradient background. 
-Three circular icons in gold line art style showing: {benefit1}, {benefit2}, {benefit3}. 
-Premium beauty marketing aesthetic. Clean Korean cosmetic brand style. 800px width.`,
-    productShotTemplate: `{productName} luxurious product photography. 
-Elegant setting with {background} background, soft natural lighting, botanical elements.
-Premium beauty brand aesthetic, magazine quality. Main color: {mainColor}. 800px width.`,
-    howToUseTemplate: `Skincare product usage tutorial infographic. {background} background.
-Three step illustration: Step 1 dispense, Step 2 apply to face, Step 3 gentle massage.
-Elegant gold line art icons, premium beauty brand style. 800px width, vertical layout.`,
-    ctaTemplate: `Skincare product call-to-action banner. {background} gradient with golden accents.
-Beautiful model with glowing skin, {productName} displayed. Luxury beauty brand aesthetic.
-Space for headline text and purchase button. 800px width.`,
+    heroTemplate: `Luxury cosmetic brand hero background. 
+Elegant {background} gradient with soft golden ambient light, bokeh effects.
+Premium beauty brand aesthetic, empty center space for product placement.
+Sophisticated clean backdrop. 860px width, vertical layout.`,
+    benefitsTemplate: `Skincare benefits section background. 
+Soft {background} gradient, subtle botanical shadow patterns, elegant light rays.
+Premium beauty aesthetic backdrop. Clean minimalist. 860px width.`,
+    productShotTemplate: `Luxurious product photography backdrop.
+Elegant {background} surface with soft natural lighting, subtle botanical elements in corners.
+Premium beauty brand aesthetic, magazine quality empty backdrop. 860px width.`,
+    howToUseTemplate: `Skincare tutorial section background.
+Soft {background} gradient with elegant light patterns.
+Premium beauty brand style backdrop. 860px width, vertical layout.`,
+    ctaTemplate: `Call-to-action banner background.
+{background} gradient with golden accents, soft glow effects.
+Luxury beauty brand aesthetic, space for text overlay. 860px width.`,
+    ingredientsTemplate: `Ingredients showcase background.
+{background} backdrop with soft lighting, subtle molecular patterns, botanical shadows.
+Scientific premium aesthetic. 860px width.`,
+    brandTemplate: `Brand story visual background.
+Elegant {background} backdrop with golden ambient light, sophisticated atmosphere.
+High-end beauty brand identity backdrop. 860px width.`,
   },
   food: {
     styleKeywords: ["fresh", "natural", "organic", "vibrant"],
     backgroundColors: ["white", "light green", "natural wood"],
     mood: ["healthy", "appetizing", "trustworthy"],
-    heroTemplate: `Fresh food product hero image. Clean {background} background with natural lighting.
-{productName} with fresh ingredients around. Appetizing food photography style.
-Product color: {mainColor}. 800px width, vertical layout.`,
-    benefitsTemplate: `Food product benefits infographic. {background} background.
-Three icons showing: {benefit1}, {benefit2}, {benefit3}. 
-Fresh and healthy aesthetic, Korean food brand style. 800px width.`,
-    productShotTemplate: `{productName} appetizing food photography.
-Natural setting with {background} background, fresh ingredients, warm lighting.
-Healthy lifestyle aesthetic. Main color: {mainColor}. 800px width.`,
-    howToUseTemplate: `Food product usage guide infographic. {background} background.
-Three steps: preparation, consumption, storage. Natural green icons.
-Clean healthy food brand style. 800px width.`,
-    ctaTemplate: `Food product promotional banner. {background} background with fresh elements.
-Healthy lifestyle scene, {productName} featured. Appetizing aesthetic.
-Space for promotional text. 800px width.`,
+    heroTemplate: `Fresh food brand hero background.
+Clean {background} surface with natural warm lighting, fresh ingredients scattered decoratively.
+Empty center space for product placement. 860px width, vertical layout.`,
+    benefitsTemplate: `Food benefits section background.
+Soft {background} gradient with natural leaf shadows, fresh aesthetic.
+Clean healthy backdrop. 860px width.`,
+    productShotTemplate: `Appetizing food photography backdrop.
+Natural {background} surface with fresh herbs, wooden elements, warm lighting.
+Empty center for product placement. 860px width.`,
+    howToUseTemplate: `Food usage guide background.
+{background} backdrop with subtle natural patterns.
+Clean healthy food brand style. 860px width.`,
+    ctaTemplate: `Food promotional banner background.
+{background} surface with fresh decorative elements at edges.
+Healthy lifestyle backdrop, space for text. 860px width.`,
+    ingredientsTemplate: `Ingredients showcase background.
+{background} backdrop with scattered fresh ingredients at edges, natural lighting.
+Organic aesthetic backdrop. 860px width.`,
+    brandTemplate: `Food brand story background.
+Clean {background} backdrop with natural farm elements, warm atmosphere.
+Trustworthy brand aesthetic. 860px width.`,
   },
   electronics: {
     styleKeywords: ["modern", "sleek", "innovative", "minimal"],
     backgroundColors: ["dark gray", "black", "deep blue"],
     mood: ["futuristic", "professional", "cutting-edge"],
-    heroTemplate: `Modern tech product hero image. Sleek {background} background with subtle gradient.
-{productName} with dramatic lighting. Premium electronics photography style.
-Product color: {mainColor}. 800px width, vertical layout.`,
-    benefitsTemplate: `Tech product features infographic. {background} gradient background.
-Three modern icons showing: {benefit1}, {benefit2}, {benefit3}.
-Futuristic minimal design, tech brand aesthetic. 800px width.`,
-    productShotTemplate: `{productName} cutting-edge tech product photography.
-Modern setting with {background} background, dramatic lighting, reflection.
-Premium electronics brand aesthetic. Main color: {mainColor}. 800px width.`,
-    howToUseTemplate: `Tech product setup guide infographic. {background} background.
-Three steps with modern blue icons: unbox, connect, enjoy.
-Sleek tech brand style, minimal design. 800px width.`,
-    ctaTemplate: `Tech product promotional banner. {background} gradient with blue accents.
-Futuristic scene, {productName} featured prominently. Premium tech aesthetic.
-Space for specs and purchase button. 800px width.`,
+    heroTemplate: `Modern tech brand hero background.
+Sleek {background} gradient with dramatic blue accent lighting, futuristic glow.
+Empty center for product placement. 860px width, vertical layout.`,
+    benefitsTemplate: `Tech features section background.
+{background} gradient with subtle circuit patterns, modern blue accents.
+Futuristic minimal backdrop. 860px width.`,
+    productShotTemplate: `Tech product photography backdrop.
+Modern {background} surface with dramatic lighting, subtle reflections.
+Premium electronics aesthetic, empty center. 860px width.`,
+    howToUseTemplate: `Tech setup guide background.
+{background} backdrop with modern geometric patterns, blue accents.
+Sleek tech brand style. 860px width.`,
+    ctaTemplate: `Tech promotional banner background.
+{background} gradient with futuristic blue glow effects.
+Premium tech aesthetic, space for text. 860px width.`,
+    ingredientsTemplate: `Tech components background.
+{background} backdrop with subtle circuit board patterns, dramatic lighting.
+Cutting-edge tech aesthetic. 860px width.`,
+    brandTemplate: `Tech brand story background.
+Sleek {background} backdrop with blue accent lighting, futuristic atmosphere.
+Premium technology brand aesthetic. 860px width.`,
   },
   fashion: {
     styleKeywords: ["stylish", "trendy", "chic", "editorial"],
     backgroundColors: ["neutral", "pastel", "soft gray"],
     mood: ["trendy", "aspirational", "confident"],
-    heroTemplate: `Stylish fashion product hero image. Clean {background} background.
-{productName} displayed elegantly. Editorial fashion photography style.
-Product color: {mainColor}. 800px width, vertical layout.`,
-    benefitsTemplate: `Fashion product features. {background} background.
-Three elegant icons showing: {benefit1}, {benefit2}, {benefit3}.
-Trendy minimalist design, fashion brand aesthetic. 800px width.`,
-    productShotTemplate: `{productName} editorial fashion photography.
-Stylish setting with {background} background, soft lighting.
-High-end fashion brand aesthetic. Main color: {mainColor}. 800px width.`,
-    howToUseTemplate: `Fashion styling guide infographic. {background} background.
-Three style suggestions with chic icons. Editorial fashion aesthetic.
-Trendy minimalist design. 800px width.`,
-    ctaTemplate: `Fashion promotional banner. {background} gradient with stylish elements.
-Model wearing/using {productName}. Aspirational lifestyle aesthetic.
-Space for promotional text. 800px width.`,
+    heroTemplate: `Stylish fashion brand hero background.
+Clean {background} gradient with soft editorial lighting, elegant shadows.
+Empty center for product placement. 860px width, vertical layout.`,
+    benefitsTemplate: `Fashion features section background.
+Soft {background} gradient with subtle textile patterns.
+Trendy minimalist backdrop. 860px width.`,
+    productShotTemplate: `Editorial fashion photography backdrop.
+Stylish {background} surface with soft diffused lighting.
+High-end fashion aesthetic, empty center. 860px width.`,
+    howToUseTemplate: `Fashion styling guide background.
+{background} backdrop with chic minimal elements.
+Editorial fashion aesthetic. 860px width.`,
+    ctaTemplate: `Fashion promotional banner background.
+{background} gradient with stylish abstract elements.
+Aspirational lifestyle backdrop, space for text. 860px width.`,
+    ingredientsTemplate: `Fashion materials background.
+{background} backdrop with subtle fabric textures, soft lighting.
+Premium fashion aesthetic. 860px width.`,
+    brandTemplate: `Fashion brand story background.
+Editorial {background} backdrop with aspirational atmosphere.
+Trendy fashion brand aesthetic. 860px width.`,
   },
   household: {
     styleKeywords: ["clean", "simple", "practical", "trustworthy"],
     backgroundColors: ["white", "light blue", "soft gray"],
     mood: ["clean", "practical", "reliable"],
-    heroTemplate: `Clean household product hero image. Bright {background} background.
-{productName} displayed clearly. Simple product photography style.
-Product color: {mainColor}. 800px width, vertical layout.`,
-    benefitsTemplate: `Household product benefits. {background} background.
-Three simple icons showing: {benefit1}, {benefit2}, {benefit3}.
-Clean practical design, trustworthy brand aesthetic. 800px width.`,
-    productShotTemplate: `{productName} clean household product photography.
-Simple setting with {background} background, bright even lighting.
-Practical and reliable brand aesthetic. Main color: {mainColor}. 800px width.`,
-    howToUseTemplate: `Household product usage guide. {background} background.
-Three simple steps with clean practical icons.
-Easy to follow instructions, trustworthy brand style. 800px width.`,
-    ctaTemplate: `Household product promotional banner. {background} background.
-Clean and practical scene with {productName}. Reliable brand aesthetic.
-Space for promotional text and action button. 800px width.`,
+    heroTemplate: `Clean household brand hero background.
+Bright {background} surface with soft even lighting.
+Empty center for product placement. 860px width, vertical layout.`,
+    benefitsTemplate: `Household benefits section background.
+Clean {background} gradient with subtle patterns.
+Practical trustworthy backdrop. 860px width.`,
+    productShotTemplate: `Clean household photography backdrop.
+Simple {background} surface with bright even lighting.
+Practical reliable aesthetic, empty center. 860px width.`,
+    howToUseTemplate: `Household usage guide background.
+{background} backdrop with clean minimal design.
+Easy to follow, trustworthy style. 860px width.`,
+    ctaTemplate: `Household promotional banner background.
+Clean {background} surface with soft practical elements.
+Reliable brand backdrop, space for text. 860px width.`,
+    ingredientsTemplate: `Household materials background.
+{background} backdrop with clean bright lighting.
+Trustworthy practical aesthetic. 860px width.`,
+    brandTemplate: `Household brand story background.
+Clean {background} backdrop with family-friendly warm atmosphere.
+Dependable brand aesthetic. 860px width.`,
   },
 };
 
@@ -275,6 +308,18 @@ export function generateSectionPrompt(
       break;
     case "product_shot":
       template = categoryTemplate.productShotTemplate;
+      break;
+    case "ingredients":
+      template = categoryTemplate.ingredientsTemplate;
+      break;
+    case "how_to_use":
+      template = categoryTemplate.howToUseTemplate;
+      break;
+    case "brand":
+      template = categoryTemplate.brandTemplate;
+      break;
+    case "cta":
+      template = categoryTemplate.ctaTemplate;
       break;
     default:
       template = categoryTemplate.productShotTemplate;

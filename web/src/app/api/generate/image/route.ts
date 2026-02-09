@@ -37,17 +37,35 @@ export async function POST(request: NextRequest) {
     });
 
     // 프롬프트 구성
-    const enhancedPrompt = `Create a professional product photography of "${productName}". ${prompt}. High quality, professional studio lighting, clean and elegant composition, commercial product shot style, 4K quality.`;
+    let contents: any[] = [];
 
-    let contents: any[] = [{ text: enhancedPrompt }];
-
-    // 이미지가 있으면 함께 전송 (이미지 편집 모드)
+    // 이미지가 있으면 함께 전송 (배경만 교체, 제품 유지 모드)
     if (imageFile) {
       const bytes = await imageFile.arrayBuffer();
       const base64 = Buffer.from(bytes).toString("base64");
       
+      // 제품 유지 + 배경 교체 프롬프트 (매우 강조)
+      const editPrompt = `IMPORTANT: You MUST keep the EXACT product from the image. DO NOT change, modify, or recreate the product itself.
+
+Your task: ONLY replace the background while keeping the product EXACTLY as it appears.
+
+Instructions:
+1. PRESERVE the product exactly - same shape, color, design, label, text, everything
+2. REMOVE the current background (usually white/plain)
+3. REPLACE with new background: ${prompt}
+4. The product should look naturally placed in the new background
+5. Add appropriate shadows and lighting that match the new background
+6. Keep the product in sharp focus
+7. DO NOT add any text, logos, watermarks, or captions to the image
+8. The output should be a clean product photo with NO text overlays
+
+Style for new background: ${prompt}
+Professional commercial photography, high quality, 860px width.
+
+CRITICAL: The product must be 100% identical to the original. Only the background changes. NO TEXT in the generated image.`;
+
       contents = [
-        { text: `Edit this product image with the following style: ${prompt}. Keep the product but change the background and styling to match: ${enhancedPrompt}` },
+        { text: editPrompt },
         {
           inlineData: {
             mimeType: imageFile.type,
@@ -55,6 +73,10 @@ export async function POST(request: NextRequest) {
           },
         },
       ];
+    } else {
+      // 이미지 없으면 배경만 생성
+      const bgOnlyPrompt = `${prompt}. Professional commercial photography background, high quality, 860px width. Empty space in center for product placement.`;
+      contents = [{ text: bgOnlyPrompt }];
     }
 
     const result = await model.generateContent(contents);

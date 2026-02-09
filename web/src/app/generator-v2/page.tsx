@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import JSZip from "jszip";
@@ -13,8 +13,22 @@ import {
   ProductShotSection,
   HowToUseSection,
   CTASection,
-  colorPalettes,
+  ProblemSection,
+  IngredientsSection,
+  BeforeAfterSection,
+  CertificationSection,
+  ReviewsSection,
+  FAQSection,
+  SpecsSection,
+  ShippingSection,
+  BrandSection,
 } from "@/components/SectionTemplates";
+import {
+  GalleryPrompt,
+  findMatchingPrompts,
+  generateStyledSectionPrompt,
+} from "@/lib/promptMatcher";
+import promptsData from "@/data/prompts.json";
 
 // 제품 분석 결과 타입
 interface ProductAnalysis {
@@ -48,9 +62,22 @@ export default function GeneratorV2Page() {
   const [step, setStep] = useState<Step>("upload");
   const [apiKey, setApiKey] = useState<string | null>(null);
   
-  // 업로드 상태
-  const [uploadedImage, setUploadedImage] = useState<{ file: File; preview: string } | null>(null);
+  // 업로드 상태 - 다중 이미지 지원
+  type ImageLabel = "main" | "front" | "side" | "back" | "detail" | "ingredient";
+  interface UploadedImage {
+    id: string;
+    file: File;
+    preview: string;
+    label: ImageLabel;
+  }
+  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // 메인 이미지 (분석용) - 첫 번째 이미지 또는 main 라벨 이미지
+  const mainImage = uploadedImages.find(img => img.label === "main") || uploadedImages[0] || null;
+  
+  // 하위 호환성을 위한 uploadedImage (기존 코드와 호환)
+  const uploadedImage = mainImage ? { file: mainImage.file, preview: mainImage.preview } : null;
   
   // 분석 상태
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -68,12 +95,39 @@ export default function GeneratorV2Page() {
   const [renderedImages, setRenderedImages] = useState<Record<string, string>>({});
   const [isRendering, setIsRendering] = useState(false);
   
-  // 섹션 템플릿 refs
+  // 섹션 템플릿 refs (14개 섹션)
   const heroRef = useRef<HTMLDivElement>(null);
+  const problemRef = useRef<HTMLDivElement>(null);
   const benefitsRef = useRef<HTMLDivElement>(null);
+  const ingredientsRef = useRef<HTMLDivElement>(null);
   const productShotRef = useRef<HTMLDivElement>(null);
+  const beforeAfterRef = useRef<HTMLDivElement>(null);
   const howToUseRef = useRef<HTMLDivElement>(null);
+  const certificationRef = useRef<HTMLDivElement>(null);
+  const reviewsRef = useRef<HTMLDivElement>(null);
+  const faqRef = useRef<HTMLDivElement>(null);
+  const specsRef = useRef<HTMLDivElement>(null);
+  const shippingRef = useRef<HTMLDivElement>(null);
+  const brandRef = useRef<HTMLDivElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
+  
+  // 프롬프트 갤러리 상태
+  const [recommendedPrompts, setRecommendedPrompts] = useState<GalleryPrompt[]>([]);
+  const [selectedPrompt, setSelectedPrompt] = useState<GalleryPrompt | null>(null);
+  
+  // 분석 완료 시 추천 프롬프트 업데이트
+  useEffect(() => {
+    if (analysis) {
+      const prompts = promptsData as GalleryPrompt[];
+      const matched = findMatchingPrompts(
+        prompts,
+        analysis.category,
+        analysis.brandTone,
+        6
+      );
+      setRecommendedPrompts(matched);
+    }
+  }, [analysis]);
 
   // 섹션 클릭 핸들러
   const handleSectionClick = (sectionId: number) => {
@@ -154,9 +208,18 @@ export default function GeneratorV2Page() {
     
     const refs: { name: string; ref: React.RefObject<HTMLDivElement | null> }[] = [
       { name: "hero", ref: heroRef },
+      { name: "problem", ref: problemRef },
       { name: "benefits", ref: benefitsRef },
+      { name: "ingredients", ref: ingredientsRef },
       { name: "product_shot", ref: productShotRef },
+      { name: "before_after", ref: beforeAfterRef },
       { name: "how_to_use", ref: howToUseRef },
+      { name: "certification", ref: certificationRef },
+      { name: "reviews", ref: reviewsRef },
+      { name: "faq", ref: faqRef },
+      { name: "specs", ref: specsRef },
+      { name: "shipping", ref: shippingRef },
+      { name: "brand", ref: brandRef },
       { name: "cta", ref: ctaRef },
     ];
     
@@ -237,7 +300,7 @@ export default function GeneratorV2Page() {
       
       // 모든 이미지를 세로로 합치기
       if (loadedImages.length > 0) {
-        const targetWidth = 800; // 고정 너비
+        const targetWidth = 860; // 네이버 스마트스토어 권장 너비
         let totalHeight = 0;
         const scaledDimensions: { width: number; height: number }[] = [];
         
@@ -321,15 +384,46 @@ export default function GeneratorV2Page() {
     }
   };
 
-  // 이미지 업로드 핸들러
+  // 이미지 업로드 핸들러 - 다중 이미지 지원, base64로 변환
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const preview = URL.createObjectURL(file);
-      setUploadedImage({ file, preview });
-      setAnalysis(null);
-      setAnalysisError(null);
-    }
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    const fileArray = Array.from(files);
+    
+    // 각 파일을 base64로 변환
+    fileArray.forEach((file, index) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64Preview = reader.result as string;
+        const newImage: UploadedImage = {
+          id: `${Date.now()}-${index}`,
+          file,
+          preview: base64Preview,
+          label: uploadedImages.length === 0 && index === 0 ? "main" : "detail", // 첫 번째는 main
+        };
+        setUploadedImages(prev => [...prev, newImage]);
+      };
+      reader.readAsDataURL(file);
+    });
+    
+    setAnalysis(null);
+    setAnalysisError(null);
+    
+    // input 초기화 (같은 파일 다시 선택 가능하도록)
+    e.target.value = "";
+  };
+  
+  // 이미지 레이블 변경
+  const handleLabelChange = (imageId: string, newLabel: ImageLabel) => {
+    setUploadedImages(prev => prev.map(img => 
+      img.id === imageId ? { ...img, label: newLabel } : img
+    ));
+  };
+  
+  // 이미지 삭제
+  const handleRemoveImage = (imageId: string) => {
+    setUploadedImages(prev => prev.filter(img => img.id !== imageId));
   };
 
   // 이미지 분석 시작
@@ -377,22 +471,34 @@ export default function GeneratorV2Page() {
   ): Promise<string | null> => {
     if (!analysis || !uploadedImage) return null;
 
-    const prompt = generateSectionPrompt(sectionName, {
-      brand: analysis.brand,
-      productName: analysis.productName,
-      category: analysis.category,
-      mainColors: analysis.mainColors,
-      brandTone: analysis.brandTone,
-      targetBenefits: analysis.targetBenefits,
-    });
+    // 선택된 갤러리 프롬프트가 있으면 스타일 적용
+    let prompt: string;
+    if (selectedPrompt) {
+      prompt = generateStyledSectionPrompt(sectionName, selectedPrompt, {
+        productName: analysis.productName,
+        brand: analysis.brand,
+        category: analysis.category,
+        mainColor: analysis.mainColors[0] || "#000000",
+        benefits: analysis.targetBenefits,
+      });
+    } else {
+      prompt = generateSectionPrompt(sectionName, {
+        brand: analysis.brand,
+        productName: analysis.productName,
+        category: analysis.category,
+        mainColors: analysis.mainColors,
+        brandTone: analysis.brandTone,
+        targetBenefits: analysis.targetBenefits,
+      });
+    }
 
     const formData = new FormData();
     formData.append("productName", `${analysis.brand} ${analysis.productName}`);
     formData.append("prompt", prompt);
     formData.append("apiKey", currentApiKey);
     
-    // 연출컷에만 원본 이미지 포함
-    if (sectionName === "product_shot") {
+    // 모든 이미지 생성 섹션에 원본 이미지 포함 (AI가 제품 유지 + 배경만 교체)
+    if (uploadedImage?.file) {
       formData.append("image", uploadedImage.file);
     }
 
@@ -421,16 +527,33 @@ export default function GeneratorV2Page() {
     setIsGenerating(true);
     setStep("generate");
 
-    // 생성할 섹션 목록
-    const sectionsToGenerate = ["hero", "benefits", "product_shot", "how_to_use", "cta"];
+    // 전체 섹션 목록 (14개)
+    const allSections = [
+      { name: "hero", nameKo: "히어로", needsImage: true },
+      { name: "problem", nameKo: "문제 공감", needsImage: false },
+      { name: "benefits", nameKo: "베네핏", needsImage: true },
+      { name: "ingredients", nameKo: "핵심 성분", needsImage: true },
+      { name: "product_shot", nameKo: "연출컷", needsImage: true },
+      { name: "before_after", nameKo: "효과 비교", needsImage: false },
+      { name: "how_to_use", nameKo: "사용법", needsImage: true },
+      { name: "certification", nameKo: "인증", needsImage: false },
+      { name: "reviews", nameKo: "고객 후기", needsImage: false },
+      { name: "faq", nameKo: "FAQ", needsImage: false },
+      { name: "specs", nameKo: "제품 스펙", needsImage: false },
+      { name: "shipping", nameKo: "배송 안내", needsImage: false },
+      { name: "brand", nameKo: "브랜드", needsImage: true },
+      { name: "cta", nameKo: "구매 유도", needsImage: true },
+    ];
+    
+    // 이미지 생성이 필요한 섹션만 추출
+    const sectionsNeedingImages = allSections.filter(s => s.needsImage).map(s => s.name);
     
     // 섹션 초기화
-    const initialSections: GeneratedSection[] = sectionsToGenerate.map((name, idx) => {
-      const sectionDef = sectionStructure.find(s => s.name === name);
+    const initialSections: GeneratedSection[] = allSections.map((section, idx) => {
       return {
-        id: sectionDef?.id || idx + 1,
-        name: name,
-        nameKo: sectionDef?.nameKo || name,
+        id: idx + 1,
+        name: section.name,
+        nameKo: section.nameKo,
         imageUrl: null,
         copyText: "",
         isGenerating: false,
@@ -440,8 +563,10 @@ export default function GeneratorV2Page() {
     setGeneratedSections(initialSections);
 
     try {
+      const totalSteps = sectionsNeedingImages.length + 1; // 카피라이팅 + 이미지 생성
+      
       // 1. 카피라이팅 생성
-      setProgress("1/6 카피라이팅 생성 중...");
+      setProgress(`1/${totalSteps} 카피라이팅 생성 중...`);
       const copyResponse = await fetch("/api/generate/copy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -457,12 +582,12 @@ export default function GeneratorV2Page() {
         setGeneratedCopy(copyData.copy);
       }
 
-      // 2. 각 섹션별 이미지 순차 생성
-      for (let i = 0; i < sectionsToGenerate.length; i++) {
-        const sectionName = sectionsToGenerate[i];
-        const sectionDef = sectionStructure.find(s => s.name === sectionName);
+      // 2. 이미지가 필요한 섹션만 순차 생성
+      for (let i = 0; i < sectionsNeedingImages.length; i++) {
+        const sectionName = sectionsNeedingImages[i];
+        const sectionDef = allSections.find(s => s.name === sectionName);
         
-        setProgress(`${i + 2}/6 ${sectionDef?.nameKo || sectionName} 생성 중...`);
+        setProgress(`${i + 2}/${totalSteps} ${sectionDef?.nameKo || sectionName} 이미지 생성 중...`);
         
         // 해당 섹션 생성 중 표시
         setGeneratedSections(prev => prev.map(s => 
@@ -545,51 +670,103 @@ export default function GeneratorV2Page() {
 
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* STEP 1: 이미지 업로드 */}
-        {(step === "upload" || !uploadedImage) && (
-          <div className="max-w-xl mx-auto">
+        {(step === "upload" || uploadedImages.length === 0) && (
+          <div className="max-w-2xl mx-auto">
             <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-lg">
               <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-6">
                 제품 사진을 업로드하세요
               </h2>
               <p className="text-center text-gray-500 dark:text-gray-400 mb-8">
-                사진 한 장만 올리면 AI가 자동으로 상세페이지를 만들어드립니다
+                여러 장의 사진을 올려 더 풍성한 상세페이지를 만들어보세요<br />
+                <span className="text-sm">(정면, 측면, 후면, 성분표 등)</span>
               </p>
 
+              {/* 업로드 영역 */}
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-12 text-center cursor-pointer hover:border-blue-500 transition-colors"
+                className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-8 text-center cursor-pointer hover:border-blue-500 transition-colors mb-6"
               >
-                {uploadedImage ? (
-                  <div className="relative w-48 h-48 mx-auto">
-                    <Image
-                      src={uploadedImage.preview}
-                      alt="업로드된 이미지"
-                      fill
-                      className="object-contain rounded-lg"
-                    />
-                  </div>
-                ) : (
-                  <>
-                    <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <p className="text-gray-500 dark:text-gray-400">클릭하여 이미지 선택</p>
-                  </>
-                )}
+                <svg className="w-12 h-12 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+                </svg>
+                <p className="text-gray-500 dark:text-gray-400">클릭하여 이미지 추가</p>
+                <p className="text-xs text-gray-400 mt-1">여러 장 동시 선택 가능</p>
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
+                  multiple
                   onChange={handleImageUpload}
                   className="hidden"
                 />
               </div>
 
-              {uploadedImage && (
+              {/* 업로드된 이미지 목록 */}
+              {uploadedImages.length > 0 && (
+                <div className="space-y-4 mb-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-gray-900 dark:text-white">
+                      업로드된 이미지 ({uploadedImages.length}장)
+                    </h3>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-sm text-blue-600 hover:text-blue-700"
+                    >
+                      + 추가
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {uploadedImages.map((img) => (
+                      <div key={img.id} className="relative group">
+                        <div className="relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-600">
+                          <Image
+                            src={img.preview}
+                            alt={`업로드된 이미지`}
+                            fill
+                            className="object-cover"
+                          />
+                          {/* 메인 이미지 표시 */}
+                          {img.label === "main" && (
+                            <div className="absolute top-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">
+                              메인
+                            </div>
+                          )}
+                          {/* 삭제 버튼 */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveImage(img.id);
+                            }}
+                            className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-sm"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        {/* 레이블 선택 */}
+                        <select
+                          value={img.label}
+                          onChange={(e) => handleLabelChange(img.id, e.target.value as ImageLabel)}
+                          className="w-full mt-2 text-xs p-1.5 border rounded dark:bg-gray-700 dark:border-gray-600"
+                        >
+                          <option value="main">메인 (분석용)</option>
+                          <option value="front">정면</option>
+                          <option value="side">측면</option>
+                          <option value="back">후면</option>
+                          <option value="detail">디테일</option>
+                          <option value="ingredient">성분표</option>
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {uploadedImages.length > 0 && (
                 <button
                   onClick={handleAnalyze}
                   disabled={isAnalyzing}
-                  className="w-full mt-6 py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {isAnalyzing ? (
                     <>
@@ -600,7 +777,7 @@ export default function GeneratorV2Page() {
                       AI가 분석 중...
                     </>
                   ) : (
-                    "AI로 분석하기"
+                    `AI로 분석하기 (${uploadedImages.length}장)`
                   )}
                 </button>
               )}
@@ -611,17 +788,30 @@ export default function GeneratorV2Page() {
         {/* STEP 2: 분석 결과 */}
         {step === "analyze" && analysis && (
           <div className="grid lg:grid-cols-2 gap-8">
-            {/* 업로드된 이미지 */}
+            {/* 업로드된 이미지들 */}
             <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">업로드된 제품</h3>
-              {uploadedImage && (
-                <div className="relative aspect-square w-full max-w-sm mx-auto">
-                  <Image
-                    src={uploadedImage.preview}
-                    alt="제품 이미지"
-                    fill
-                    className="object-contain rounded-lg"
-                  />
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+                업로드된 제품 ({uploadedImages.length}장)
+              </h3>
+              {uploadedImages.length > 0 && (
+                <div className="grid grid-cols-2 gap-3">
+                  {uploadedImages.map((img) => (
+                    <div key={img.id} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600">
+                      <Image
+                        src={img.preview}
+                        alt={`제품 이미지 - ${img.label}`}
+                        fill
+                        className="object-cover"
+                      />
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs py-1 text-center">
+                        {img.label === "main" ? "메인" : 
+                         img.label === "front" ? "정면" :
+                         img.label === "side" ? "측면" :
+                         img.label === "back" ? "후면" :
+                         img.label === "detail" ? "디테일" : "성분표"}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -737,6 +927,67 @@ export default function GeneratorV2Page() {
                     ))}
                   </div>
                 </div>
+                
+                {/* 추천 프롬프트 갤러리 */}
+                {recommendedPrompts.length > 0 && (
+                  <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        추천 스타일 (선택)
+                      </label>
+                      {selectedPrompt && (
+                        <button
+                          onClick={() => setSelectedPrompt(null)}
+                          className="text-xs text-gray-500 hover:text-red-500"
+                        >
+                          선택 해제
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mb-3">
+                      AI 분석 결과에 맞는 스타일을 추천해드려요. 클릭해서 선택하세요.
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {recommendedPrompts.map((prompt) => (
+                        <div
+                          key={prompt.id}
+                          onClick={() => setSelectedPrompt(
+                            selectedPrompt?.id === prompt.id ? null : prompt
+                          )}
+                          className={`relative cursor-pointer rounded-lg overflow-hidden transition-all ${
+                            selectedPrompt?.id === prompt.id
+                              ? "ring-2 ring-blue-500 scale-105"
+                              : "hover:ring-2 hover:ring-gray-300"
+                          }`}
+                        >
+                          <div className="aspect-square relative">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={prompt.thumbnail_url}
+                              alt={prompt.category_ko}
+                              className="w-full h-full object-cover"
+                            />
+                            {selectedPrompt?.id === prompt.id && (
+                              <div className="absolute inset-0 bg-blue-500/30 flex items-center justify-center">
+                                <span className="text-white text-xl">✓</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-1 text-center">
+                            {prompt.category_ko}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {selectedPrompt && (
+                      <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                        <p className="text-xs text-blue-700 dark:text-blue-300">
+                          <span className="font-medium">선택됨:</span> {selectedPrompt.category_ko} 스타일이 적용됩니다
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <button
@@ -927,12 +1178,12 @@ export default function GeneratorV2Page() {
             position: "fixed", 
             left: "-9999px", 
             top: 0,
-            width: "800px",
+            width: "860px",
             backgroundColor: "#ffffff",
           }}
           aria-hidden="true"
         >
-          {/* 히어로 섹션 */}
+          {/* 1. 히어로 섹션 - AI가 제품 유지 + 배경 교체 */}
           <HeroSection
             ref={heroRef}
             productName={analysis.productName}
@@ -943,7 +1194,18 @@ export default function GeneratorV2Page() {
             backgroundImage={generatedSections.find(s => s.name === "hero")?.imageUrl}
           />
           
-          {/* 베네핏 섹션 */}
+          {/* 2. 문제 공감 섹션 */}
+          <ProblemSection
+            ref={problemRef}
+            problems={[
+              "매일 아침 거울을 보며 한숨을 쉬셨나요?",
+              "다양한 제품을 써봤지만 효과가 없으셨나요?",
+              "민감한 피부 때문에 고민이셨나요?",
+            ]}
+            category={analysis.category}
+          />
+          
+          {/* 3. 베네핏 섹션 */}
           <BenefitsSection
             ref={benefitsRef}
             benefits={parseCopyText(generatedCopy).benefits.length > 0 
@@ -953,16 +1215,35 @@ export default function GeneratorV2Page() {
             backgroundImage={generatedSections.find(s => s.name === "benefits")?.imageUrl}
           />
           
-          {/* 연출컷 섹션 */}
+          {/* 4. 핵심 성분 섹션 */}
+          <IngredientsSection
+            ref={ingredientsRef}
+            ingredients={analysis.ingredients.slice(0, 3).map((ing, idx) => ({
+              name: ing,
+              description: analysis.targetBenefits[idx] || "피부 개선에 도움"
+            }))}
+            category={analysis.category}
+            backgroundImage={generatedSections.find(s => s.name === "ingredients")?.imageUrl}
+          />
+          
+          {/* 5. 연출컷 섹션 - AI가 제품 유지 + 배경 교체 */}
           <ProductShotSection
             ref={productShotRef}
             productName={analysis.productName}
             tagline={analysis.keyFeatures[0] || "당신을 위한 특별한 제품"}
             category={analysis.category}
-            productImage={generatedSections.find(s => s.name === "product_shot")?.imageUrl || uploadedImage?.preview || null}
+            backgroundImage={generatedSections.find(s => s.name === "product_shot")?.imageUrl}
           />
           
-          {/* 사용법 섹션 */}
+          {/* 6. 효과 비교 섹션 */}
+          <BeforeAfterSection
+            ref={beforeAfterRef}
+            title="눈에 보이는 변화"
+            description="꾸준한 사용으로 눈에 띄는 변화를 경험하세요"
+            category={analysis.category}
+          />
+          
+          {/* 7. 사용법 섹션 */}
           <HowToUseSection
             ref={howToUseRef}
             steps={parseCopyText(generatedCopy).steps}
@@ -970,7 +1251,69 @@ export default function GeneratorV2Page() {
             backgroundImage={generatedSections.find(s => s.name === "how_to_use")?.imageUrl}
           />
           
-          {/* CTA 섹션 */}
+          {/* 8. 인증 섹션 */}
+          <CertificationSection
+            ref={certificationRef}
+            certifications={[
+              "피부 자극 테스트 완료",
+              "피부과 전문의 테스트 완료",
+              "무향료 / 무파라벤",
+              "비건 인증",
+            ]}
+            category={analysis.category}
+          />
+          
+          {/* 9. 고객 후기 섹션 */}
+          <ReviewsSection
+            ref={reviewsRef}
+            reviews={[
+              { name: "김**", rating: 5, text: "피부가 정말 좋아졌어요! 꾸준히 사용하고 있습니다." },
+              { name: "이**", rating: 5, text: "순하면서도 효과가 좋아서 만족합니다." },
+              { name: "박**", rating: 4, text: "향도 좋고 발림성이 뛰어나요." },
+            ]}
+            category={analysis.category}
+          />
+          
+          {/* 10. FAQ 섹션 */}
+          <FAQSection
+            ref={faqRef}
+            faqs={[
+              { question: "민감한 피부도 사용할 수 있나요?", answer: "네, 저자극 테스트를 완료하여 민감한 피부에도 안심하고 사용하실 수 있습니다." },
+              { question: "얼마나 사용해야 효과를 볼 수 있나요?", answer: "개인차가 있지만, 보통 2-4주 정도 꾸준히 사용하시면 변화를 느끼실 수 있습니다." },
+              { question: "다른 제품과 함께 사용해도 되나요?", answer: "네, 대부분의 스킨케어 제품과 함께 사용하실 수 있습니다." },
+            ]}
+            category={analysis.category}
+          />
+          
+          {/* 11. 제품 스펙 섹션 */}
+          <SpecsSection
+            ref={specsRef}
+            productName={`${analysis.brand} ${analysis.productName}`}
+            specs={[
+              { label: "용량", value: "50ml" },
+              { label: "제조국", value: "대한민국" },
+              { label: "사용기한", value: "제조일로부터 30개월" },
+              { label: "피부타입", value: "모든 피부" },
+            ]}
+            category={analysis.category}
+          />
+          
+          {/* 12. 배송 안내 섹션 */}
+          <ShippingSection
+            ref={shippingRef}
+            category={analysis.category}
+          />
+          
+          {/* 13. 브랜드 소개 섹션 */}
+          <BrandSection
+            ref={brandRef}
+            brand={analysis.brand}
+            brandStory="자연에서 찾은 아름다움, 과학으로 완성한 효능. 우리는 모든 분들의 건강한 아름다움을 위해 끊임없이 연구하고 혁신합니다."
+            category={analysis.category}
+            backgroundImage={generatedSections.find(s => s.name === "brand")?.imageUrl}
+          />
+          
+          {/* 14. CTA 섹션 */}
           <CTASection
             ref={ctaRef}
             productName={analysis.productName}

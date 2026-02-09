@@ -50,3 +50,7 @@ next-env.d.ts
 
 # Large data files (optional - can be removed if you want to track)
 # data/*.json
+
+# Test/output data
+TEST/
+뭉탱이/
